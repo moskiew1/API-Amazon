@@ -707,8 +707,7 @@ function buildCargoHandlings(row) {
 
     const h = {
       cargoHandlingType,
-      address: { placeId: s.placeId },
-      cargos: []
+      address: { placeId: s.placeId }
     };
     const term = parseDate(s.arrival);
     if (term) h.term = term;
@@ -767,11 +766,23 @@ async function sendLoad(payload, apiKey, allowDuplicates) {
 
 function extractErrorMsg(data) {
   if (!data) return '';
-  if (typeof data === 'string') return data.substring(0, 300);
-  if (data.message) return data.message;
-  if (data.error)   return data.error;
-  if (Array.isArray(data) && data.length > 0) return (data[0].message || JSON.stringify(data[0])).substring(0, 300);
-  return JSON.stringify(data).substring(0, 300);
+  if (typeof data === 'string') return data.substring(0, 400);
+
+  // Spring Boot validation: { message: "...", errors: [{ field: "...", defaultMessage: "..." }] }
+  if (data.errors && Array.isArray(data.errors) && data.errors.length > 0) {
+    const fieldErrors = data.errors.map(e => `[${e.field || e.objectName || '?'}] ${e.defaultMessage || e.message || ''}`).join(' | ');
+    const top = data.message ? data.message + ' → ' : '';
+    return (top + fieldErrors).substring(0, 500);
+  }
+  // Spring Boot / FireTMS single message
+  if (data.message) return data.message.substring(0, 400);
+  if (data.error)   return data.error.substring(0, 400);
+  if (Array.isArray(data) && data.length > 0) {
+    const first = data[0];
+    if (typeof first === 'object' && first.message) return first.message.substring(0, 400);
+    return JSON.stringify(first).substring(0, 400);
+  }
+  return JSON.stringify(data).substring(0, 500);
 }
 
 function isDuplicate(errMsg, status) {
@@ -1020,18 +1031,4 @@ function escHtml(str) {
 }
 
 function csvEsc(val) {
-  const s = String(val || '');
-  if (s.includes(',') || s.includes('"') || s.includes('\n')) return '"' + s.replace(/"/g, '""') + '"';
-  return s;
-}
-
-// ══════════════════════════════════════════════════
-//  INICJALIZACJA
-// ══════════════════════════════════════════════════
-(function init() {
-  renderProfileTabs();
-  if (profiles.length > 0) switchProfile(0);
-})();
-</script>
-</body>
-</html>
+  
