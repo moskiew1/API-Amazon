@@ -766,9 +766,16 @@ async function sendLoad(payload, apiKey, allowDuplicates) {
 
 function extractErrorMsg(data) {
   if (!data) return '';
-  if (typeof data === 'string') return data.substring(0, 500);
-  // Zawsze zwracaj pełny JSON błędu żeby zobaczyć strukturę
-  return JSON.stringify(data).substring(0, 800);
+  if (typeof data === 'string') return data.substring(0, 400);
+  // FireTMS: { message: "...", errors: ["...", "..."] }
+  if (data.message) {
+    const extras = Array.isArray(data.errors) && data.errors.length > 0
+      ? ' (' + data.errors.join('; ') + ')' : '';
+    return (data.message + extras).substring(0, 500);
+  }
+  if (data.error) return data.error.substring(0, 400);
+  if (Array.isArray(data) && data.length > 0) return JSON.stringify(data[0]).substring(0, 400);
+  return JSON.stringify(data).substring(0, 400);
 }
 
 function isDuplicate(errMsg, status) {
@@ -1022,13 +1029,4 @@ function csvEsc(val) {
   return s;
 }
 
-// ══════════════════════════════════════════════════
-//  INICJALIZACJA
-// ══════════════════════════════════════════════════
-(function init() {
-  renderProfileTabs();
-  if (profiles.length > 0) switchProfile(0);
-})();
-</script>
-</body>
-</html>
+// ════════════════════════════════�
