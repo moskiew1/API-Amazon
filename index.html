@@ -766,23 +766,9 @@ async function sendLoad(payload, apiKey, allowDuplicates) {
 
 function extractErrorMsg(data) {
   if (!data) return '';
-  if (typeof data === 'string') return data.substring(0, 400);
-
-  // Spring Boot validation: { message: "...", errors: [{ field: "...", defaultMessage: "..." }] }
-  if (data.errors && Array.isArray(data.errors) && data.errors.length > 0) {
-    const fieldErrors = data.errors.map(e => `[${e.field || e.objectName || '?'}] ${e.defaultMessage || e.message || ''}`).join(' | ');
-    const top = data.message ? data.message + ' → ' : '';
-    return (top + fieldErrors).substring(0, 500);
-  }
-  // Spring Boot / FireTMS single message
-  if (data.message) return data.message.substring(0, 400);
-  if (data.error)   return data.error.substring(0, 400);
-  if (Array.isArray(data) && data.length > 0) {
-    const first = data[0];
-    if (typeof first === 'object' && first.message) return first.message.substring(0, 400);
-    return JSON.stringify(first).substring(0, 400);
-  }
-  return JSON.stringify(data).substring(0, 500);
+  if (typeof data === 'string') return data.substring(0, 500);
+  // Zawsze zwracaj pełny JSON błędu żeby zobaczyć strukturę
+  return JSON.stringify(data).substring(0, 800);
 }
 
 function isDuplicate(errMsg, status) {
@@ -1045,4 +1031,4 @@ function csvEsc(val) {
 })();
 </script>
 </body>
-</html>
+</html>                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     
