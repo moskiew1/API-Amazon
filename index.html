@@ -1031,4 +1031,18 @@ function escHtml(str) {
 }
 
 function csvEsc(val) {
-  
+  const s = String(val || '');
+  if (s.includes(',') || s.includes('"') || s.includes('\n')) return '"' + s.replace(/"/g, '""') + '"';
+  return s;
+}
+
+// ══════════════════════════════════════════════════
+//  INICJALIZACJA
+// ══════════════════════════════════════════════════
+(function init() {
+  renderProfileTabs();
+  if (profiles.length > 0) switchProfile(0);
+})();
+</script>
+</body>
+</html>
