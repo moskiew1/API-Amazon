@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Amazon CSV → FireTMS Import</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -376,10 +377,10 @@
     >
       <div class="upload-icon">📂</div>
       <h3>Przeciągnij plik CSV tutaj lub kliknij, aby wybrać</h3>
-      <p>Obsługiwane: pliki CSV eksportowane z aplikacji Amazon</p>
+      <p>Obsługiwane: CSV i XLSX eksportowane z aplikacji Amazon</p>
     </div>
 
-    <input type="file" id="fileInput" accept=".csv,text/csv" style="display:none" onchange="handleFileSelect(event)">
+    <input type="file" id="fileInput" accept=".csv,.xlsx,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" style="display:none" onchange="handleFileSelect(event)">
 
     <div id="file-info" style="display:none" class="file-selected">
       <span class="file-icon">📋</span>
@@ -1012,10 +1013,35 @@ function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
 
 function readFile(file) {
   return new Promise((res, rej) => {
-    const reader = new FileReader();
-    reader.onload  = e => res(e.target.result);
-    reader.onerror = () => rej(new Error('Nie można odczytać pliku'));
-    reader.readAsText(file, 'UTF-8');
+    if (file.name.toLowerCase().endsWith('.xlsx') || file.name.toLowerCase().endsWith('.xls')) {
+      // Obsługa Excel: dane CSV są w kolumnie A każdego wiersza
+      const reader = new FileReader();
+      reader.onload = e => {
+        try {
+          const wb = XLSX.read(e.target.result, { type: 'array' });
+          const ws = wb.Sheets[wb.SheetNames[0]];
+          const range = XLSX.utils.decode_range(ws['!ref'] || 'A1');
+          const lines = [];
+          for (let r = range.s.r; r <= range.e.r; r++) {
+            const cell = ws[XLSX.utils.encode_cell({ r, c: 0 })];
+            if (cell && cell.v !== undefined && cell.v !== null) {
+              lines.push(String(cell.v));
+            }
+          }
+          res(lines.join('\n'));
+        } catch(err) {
+          rej(new Error('Błąd odczytu XLSX: ' + err.message));
+        }
+      };
+      reader.onerror = () => rej(new Error('Nie można odczytać pliku XLSX'));
+      reader.readAsArrayBuffer(file);
+    } else {
+      // Obsługa CSV (oryginalna)
+      const reader = new FileReader();
+      reader.onload  = e => res(e.target.result);
+      reader.onerror = () => rej(new Error('Nie można odczytać pliku'));
+      reader.readAsText(file, 'UTF-8');
+    }
   });
 }
 
