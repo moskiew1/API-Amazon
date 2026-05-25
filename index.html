@@ -688,30 +688,53 @@ function parseDate(raw) {
   return `${m[3]}-${m[1]}-${m[2]}T${m[4]}:${m[5]}:00`;
 }
 
+/** Wyciąga "HH:mm:ss" z daty "MM/DD/YYYY HH:mm" */
+function extractTime(raw) {
+  const str = (raw || '').trim();
+  const m = str.match(/\d{2}\/\d{2}\/\d{4}\s+(\d{2}:\d{2})/);
+  return m ? m[1] + ':00' : null;
+}
+
 /** Buduje tablicę cargoHandlings z postojów CSV */
 function buildCargoHandlings(row) {
   const stops = [];
   for (let i = 0; i < NUM_STOPS; i++) {
     const idxId  = COL_STOP_START + i * STOP_COL_WIDTH;
     const idxArr = COL_STOP_START + i * STOP_COL_WIDTH + 1;
-    const placeId = (row[idxId]  || '').trim();
-    const arrival = (row[idxArr] || '').trim();
-    if (placeId) stops.push({ placeId, arrival });
+    const idxDep = COL_STOP_START + i * STOP_COL_WIDTH + 2;
+    const placeId   = (row[idxId]  || '').trim();
+    const arrival   = (row[idxArr] || '').trim();
+    const departure = (row[idxDep] || '').trim();
+    if (placeId) stops.push({ placeId, arrival, departure });
   }
   if (stops.length === 0) return [];
 
   return stops.map((s, idx) => {
     let cargoHandlingType;
-    if      (idx === 0)              cargoHandlingType = 'LOADING';
+    if      (idx === 0)                cargoHandlingType = 'LOADING';
     else if (idx === stops.length - 1) cargoHandlingType = 'UNLOADING';
-    else                             cargoHandlingType = 'PLACE';
+    else                               cargoHandlingType = 'PLACE';
 
     const h = {
       cargoHandlingType,
       address: { addressType: 'ID', placeId: s.placeId }
     };
+
+    // term = najwcześniejsza awizacja (czas przyjazdu)
     const term = parseDate(s.arrival);
     if (term) h.term = term;
+
+    // timeWindow — awizacja załadunku/rozładunku
+    const twStart = extractTime(s.arrival);
+    const twEnd   = extractTime(s.departure);
+    if (twStart) {
+      h.timeWindow = {
+        enabled: true,
+        start: twStart,
+        end: twEnd || twStart   // jeśli brak wyjazdu — użyj przyjazdu
+      };
+    }
+
     return h;
   });
 }
